@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>إدارة عطر الملوك</title>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        :root { --gold: #d4af37; --dark: #0f172a; --card: #1e293b; }
+        body { margin: 0; background: #020617; font-family: 'Cairo', sans-serif; overflow: hidden; color: white; }
+
+        /* الهيدر العلوي */
+        .admin-header {
+            height: 65px; background: var(--dark); display: flex; align-items: center;
+            padding: 0 20px; border-bottom: 1px solid #1e293b; position: fixed; top: 0; width: 100%; z-index: 2000; box-sizing: border-box;
+        }
+
+        .hamburger { font-size: 26px; color: var(--gold); background: none; border: none; cursor: pointer; margin-left: 15px; }
+
+        /* القائمة الجانبية */
+        .sidebar {
+            width: 280px; background: var(--dark); height: 100vh; position: fixed;
+            top: 0; right: -280px; transition: 0.3s ease; z-index: 3000; padding-top: 60px;
+            border-left: 1px solid #1e293b;
+        }
+        .sidebar.open { right: 0; }
+        .nav-item { padding: 15px 25px; color: #94a3b8; cursor: pointer; border-bottom: 1px solid #1e293b; }
+        .nav-item:hover { background: #1e293b; color: var(--gold); }
+
+        /* المحتوى */
+        .main-container { padding: 80px 20px 20px; height: 100vh; box-sizing: border-box; overflow-y: auto; }
+        .glass-card { background: var(--card); border-radius: 12px; padding: 25px; border: 1px solid rgba(255,255,255,0.05); max-width: 700px; margin: 0 auto 20px; }
+
+        input, textarea, select {
+            width: 100%; background: #020617; border: 1px solid #334155;
+            color: white; padding: 12px; border-radius: 8px; margin-bottom: 15px; box-sizing: border-box;
+        }
+
+        .btn { border: none; padding: 12px; border-radius: 8px; font-weight: bold; cursor: pointer; width: 100%; font-family: 'Cairo'; }
+        .btn-gold { background: var(--gold); color: black; }
+        .btn-edit { background: #0ea5e9; color: white; width: auto; padding: 5px 15px; margin-left: 5px; }
+        .btn-del { background: #ef4444; color: white; width: auto; padding: 5px 15px; }
+
+        /* جدول المنتجات */
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; font-size: 0.9rem; }
+        th { text-align: right; color: var(--gold); border-bottom: 1px solid #334155; padding: 10px; }
+        td { padding: 10px; border-bottom: 1px solid #1e293b; }
+
+        .overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 2500; }
+        .overlay.active { display: block; }
+    </style>
+</head>
+<body>
+
+<header class="admin-header">
+    <button class="hamburger" onclick="toggleMenu()">☰</button>
+    <div style="color: var(--gold); font-weight: bold;">لوحة تحكم عطر الملوك</div>
+</header>
+
+<div class="overlay" id="overlay" onclick="toggleMenu()"></div>
+
+<nav class="sidebar" id="sidebar">
+    <div class="nav-item" onclick="showSec('form-sec')">➕ إضافة منتج جديد</div>
+    <div class="nav-item" onclick="showSec('list-sec')">📋 تعديل وحذف المنتجات</div>
+    <div class="nav-item" onclick="location.href='index.html'">👁️ معاينة المتجر</div>
+</nav>
+
+<main class="main-container">
+    <div id="form-sec" class="glass-card">
+        <h3 id="form-title" style="color:var(--gold); margin-top:0;">إضافة منتج جديد</h3>
+        <input type="hidden" id="edit-id">
+        <input type="text" id="pName" placeholder="اسم المنتج">
+        <input type="number" id="pPrice" placeholder="السعر">
+        <input type="text" id="pImg" placeholder="رابط الصورة">
+        <input type="text" id="pDesc" placeholder="وصف المختصر">
+        <select id="pCat">
+            <option value="فخم">فخم</option>
+            <option value="رجالي">رجالي</option>
+            <option value="نسائي">نسائي</option>
+        </select>
+        <button class="btn btn-gold" id="save-btn" onclick="saveProduct()">نشر المنتج</button>
+    </div>
+
+    <div id="list-sec" class="glass-card" style="display:none;">
+        <h3 style="color:var(--gold); margin-top:0;">قائمة المنتجات</h3>
+        <table>
+            <thead>
+                <tr>
+                    <th>المنتج</th>
+                    <th>السعر</th>
+                    <th>العمليات</th>
+                </tr>
+            </thead>
+            <tbody id="p-table"></tbody>
+        </table>
+    </div>
+</main>
+
+<script>
+    let products = JSON.parse(localStorage.getItem('muluk_products')) || [];
+
+    function toggleMenu() {
+        document.getElementById('sidebar').classList.toggle('open');
+        document.getElementById('overlay').classList.toggle('active');
+    }
+
+    function showSec(id) {
+        document.getElementById('form-sec').style.display = id === 'form-sec' ? 'block' : 'none';
+        document.getElementById('list-sec').style.display = id === 'list-sec' ? 'block' : 'none';
+        toggleMenu();
+    }
+
+    function saveProduct() {
+        const id = document.getElementById('edit-id').value;
+        const p = {
+            id: id ? parseInt(id) : Date.now(),
+            name: document.getElementById('pName').value,
+            price: document.getElementById('pPrice').value,
+            img: document.getElementById('pImg').value,
+            desc: document.getElementById('pDesc').value,
+            cat: document.getElementById('pCat').value
+        };
+
+        if (id) {
+            const idx = products.findIndex(item => item.id == id);
+            products[idx] = p;
+        } else {
+            products.push(p);
+        }
+
+        localStorage.setItem('muluk_products', JSON.stringify(products));
+        resetForm();
+        renderTable();
+        alert("تم الحفظ بنجاح!");
+    }
+
+    function renderTable() {
+        const tbody = document.getElementById('p-table');
+        tbody.innerHTML = products.map(p => `
+            <tr>
+                <td>${p.name}</td>
+                <td>${p.price}</td>
+                <td>
+                    <button class="btn-edit" onclick="editProduct(${p.id})">تعديل</button>
+                    <button class="btn-del" onclick="deleteProduct(${p.id})">حذف</button>
+                </td>
+            </tr>
+        `).join('');
+    }
+
+    function editProduct(id) {
+        const p = products.find(item => item.id == id);
+        document.getElementById('edit-id').value = p.id;
+        document.getElementById('pName').value = p.name;
+        document.getElementById('pPrice').value = p.price;
+        document.getElementById('pImg').value = p.img;
+        document.getElementById('pDesc').value = p.desc;
+        document.getElementById('pCat').value = p.cat;
+        
+        document.getElementById('form-title').innerText = "تعديل بيانات المنتج";
+        document.getElementById('save-btn').innerText = "تحديث البيانات";
+        showSec('form-sec');
+        toggleMenu(); // لغلق القائمة لأن showSec ستفتحه
+    }
+
+    function deleteProduct(id) {
+        if(confirm("هل أنت متأكد من الحذف؟")) {
+            products = products.filter(p => p.id !== id);
+            localStorage.setItem('muluk_products', JSON.stringify(products));
+            renderTable();
+        }
+    }
+
+    function resetForm() {
+        document.getElementById('edit-id').value = '';
+        document.getElementById('form-title').innerText = "إضافة منتج جديد";
+        document.getElementById('save-btn').innerText = "نشر المنتج";
+        document.querySelectorAll('input').forEach(i => i.value = '');
+    }
+
+    renderTable();
+</script>
+
+</body>
+</html>
